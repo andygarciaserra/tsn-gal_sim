@@ -61,7 +61,7 @@ class universe:
     part = np.array([])
     frames = np.array([])
     
-    tbin = 0.001*(18e8*365*24*3600)      # Time bin for orbit integration.
+    tbin = 0.001*(18.6e8*U_T)      # Time bin for orbit integration.
     method = ''     # Integration method ('Euler' for Euler and 'RK4' for Runge-Kutta)
     sys = ''        # System type ('sun' for sin-SagA / 'loadN' to load ics from loadN.txt)
 
@@ -92,12 +92,12 @@ class universe:
     def add(self,newpart):
         self.part = np.append(self.part,newpart)
     
-    def plot(self):
+    def plot(self,n):       #Plots the n-element inside the frames vector of particles through time
         figdir='figures/'
             
             #getting data
-        x = [i.xpos/U_DIST for i in self.part]
-        y = [i.ypos/U_DIST for i in self.part]
+        x = [i.xpos/U_DIST for i in self.frames[n]]
+        y = [i.ypos/U_DIST for i in self.frames[n]]
             #plotting
         plt.plot(0,0,'tab:orange',marker='o',ms=15,alpha=0.5)
         plt.plot(x,y,'ko',ms=3)
@@ -127,41 +127,42 @@ class universe:
                 
         if (self.method=='RK4'):
             for i in range(len(self.part)):
-                mass = self.part[i].m
-                [newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz] = rk4(self.part.x,self.part.y,self.part.z,self.part.vx,self.part.vy,self.part.vz)
-                self.part[i] = particle(mass,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz)
+                parti = self.part[i]
+                [newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz] = self.rk4(parti.xpos,parti.ypos,parti.zpos,parti.vx,parti.vy,parti.vz)
+                self.part[i] = particle(parti.m,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz)
             return self.part
+   
+    def mass_r(self,x,y,z):
+        r = np.sqrt(x**2 + y**2 + z**2)
+        mass = 4*np.pi*RHOo*(Rs**3)*(np.log((Rs+r)/Rs)-(r/(Rs+r)))
+        return mass,r
+
+    def acc(self,x,y,z,vx,vy,vz):
+        m,r = self.mass_r(x,y,z)
+        acc = [vx,vy,vz,-(G*m/(r**3))*x,-(G*m/(r**3))*y,-(G*m/(r**3))*z]
+        return acc
     
-    def rk4(x,y,z,vx,vy,vz):
-        def f(x,y,z):
-            r = np.sqrt(x**2 + y**2 + z**2)
-            mass_r = 4*np.pi*RHOo*(Rs**3)*(np.log((Rs+r)/Rs)-(r/(Rs+r)))
-            f = [-(G*mass_r/(r**3))*x,-(G*mass_r/(r**3))*y,-(G*mass_r/(r**3))*z]
-            return f
-        pos = [x,y,z]
-        v = [vx,vy,vz]
-        h = self.tbin
-        i=0
-        while i<3:
-            f1=f(pos[0],pos[1],pos[2])
-            k1[i] = h*f1[i]
-            f2=f(pos[0],pos[1],pos[2])
-            k2[i] = h*f2[i]
-            f3=f(pos[0],pos[1],pos[2])
-            k3[i] = 
-            f4=f(pos[0],pos[1],pos[2])
-            k4[i] = 
-            i+=1
+    def rk4(self,x,y,z,vx,vy,vz):
+        h = self.tbin    
+        
+        k1=self.acc(x,y,z,vx,vy,vz)
+        k2=self.acc(x+k1[0]*h/2, y+k1[1]*h/2, z+k1[2]*h/2, vx+k1[3]*h/2, vy+k1[4]*h/2, vz+k1[5]*h/2)
+        k3=self.acc(x+k2[0]*h/2, y+k2[1]*h/2, z+k2[2]*h/2, vx+k2[3]*h/2, vy+k2[4]*h/2, vz+k2[5]*h/2)
+        k4=self.acc(x+k3[0], y+k3[1], z+k3[2], vx+k3[3], vy+k3[4], vz+k3[5])
 
+        newx = x + (h/6.)*(k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
+        newy = y + (h/6.)*(k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
+        newz = z + (h/6.)*(k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
+        newvx = vx + (h/6.)*(k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
+        newvy = vy + (h/6.)*(k1[4] + 2*k2[4] + 2*k3[4] + k4[4])
+        newvz = vz + (h/6.)*(k1[5] + 2*k2[5] + 2*k3[5] + k4[5])
 
-        return newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz 
+        return newx,newy,newz,newvx,newvy,newvz 
    
     def whole(self,t):
         totalt = t
         i = 0
-        self.show()
         while i < totalt:
             self.frames = np.append(self.frames,self.part)
             self.part = self.nextframe()
-            self.plot()
             i+=self.tbin
