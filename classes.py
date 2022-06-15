@@ -92,6 +92,7 @@ class universe:
         self.part = np.append(self.part,newpart)
     
     def plot_trace(self):       #Plots the n-element inside the frames vector of particles through time
+        fig = plt.figure()
         ax = plt.axes(projection='3d')
         for i in range(len(self.part)):
             x = [self.frames[j,i].xpos/U_DIST for j in range(len(self.frames[:,i]))]
@@ -104,7 +105,7 @@ class universe:
             
             #formatting plot
         plt.grid()
-        plt.savefig(SAVEDIR+self.sys+'_'+self.method+'.png',dpi=100)
+        fig.savefig(SAVEDIR+str(self.sys)+'_'+str(self.method)+'.png',dpi=200)
         plt.show()
 
     def nextframe(self,oldpart):
@@ -144,7 +145,7 @@ class universe:
         k1=self.acc(x,y,z,vx,vy,vz)
         k2=self.acc(x+k1[0]*h/2, y+k1[1]*h/2, z+k1[2]*h/2, vx+k1[3]*h/2, vy+k1[4]*h/2, vz+k1[5]*h/2)
         k3=self.acc(x+k2[0]*h/2, y+k2[1]*h/2, z+k2[2]*h/2, vx+k2[3]*h/2, vy+k2[4]*h/2, vz+k2[5]*h/2)
-        k4=self.acc(x+k3[0], y+k3[1], z+k3[2], vx+k3[3], vy+k3[4], vz+k3[5])
+        k4=self.acc(x+k3[0]*h, y+k3[1]*h, z+k3[2]*h, vx+k3[3]*h, vy+k3[4]*h, vz+k3[5]*h)
 
         newx = x + (h/6.)*(k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
         newy = y + (h/6.)*(k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
