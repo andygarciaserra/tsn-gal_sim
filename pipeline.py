@@ -14,10 +14,9 @@ U_T = 365*24*3600
 
 #CREATING A TEST UNIVERSE OF N=1000:
 
-u = universe('RK4','sun')
-u.whole(18e8*U_T)
+u = universe('Euler','load10')
+u.whole(18.6e8*U_T)
 
 #Plotting traces:
-v = u.frames
-for i in range(len(v)):
-    u.plot(i)
+frames = u.frames
+u.plot_trace()

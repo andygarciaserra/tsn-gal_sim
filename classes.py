@@ -10,11 +10,12 @@ import random
 from matplotlib.offsetbox import TextArea, DrawingArea, OffsetImage, AnnotationBbox
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
+from mpl_toolkits.mplot3d import Axes3D
 
 
 #General variables:
 LOAD_DIR = './'
+SAVEDIR = 'figures/'
 
 #Natural to cgs convertion units:
 U_T = 3600*24*365 #yrs to s
@@ -61,9 +62,9 @@ class universe:
     part = np.array([])
     frames = np.array([])
     
-    tbin = 0.001*(18.6e8*U_T)      # Time bin for orbit integration.
-    method = ''     # Integration method ('Euler' for Euler and 'RK4' for Runge-Kutta)
-    sys = ''        # System type ('sun' for sin-SagA / 'loadN' to load ics from loadN.txt)
+    tbin = 0.001*(18.6e8*U_T)   # Time bin for orbit integration.
+    method = ''                 # Integration method ('Euler' for Euler and 'RK4' for Runge-Kutta)
+    sys = ''                    # System type ('sun' for sun-SagA / 'loadN' to load ics from loadN.txt)
 
     def __init__(self,method,sys):          #Definition example: u = Universe(100, 10 , 10 ,  'RK4' ,'fig','binary')  
         self.sys = sys
@@ -73,64 +74,59 @@ class universe:
         if self.sys=='sun':
             self.add(particle(1*U_MASS, 8*U_DIST,0,0, 0,127*U_VEL,0))
         if self.sys=='load10':
-            data = self.load(10)
+            self.load(10)
         if self.sys=='load100':
-            data = self.load(100)
+            self.load(100)
         if self.sys=='load1000':
-            data = self.load(1000)
-    
+            self.load(1000)  
+
     def load(self,N):
         data = np.loadtxt(LOAD_DIR+'disk'+str(N)+'.txt')
         for i in range(len(data)):
-            self.part = np.array([])
-            self.add(particle(data[i,0],data[i,1],data[i,2],data[i,3],data[i,4],data[i,5],data[i,6]))
-        return data
+            self.add(particle(data[i,0],data[i,1]*U_DIST,data[i,2]*U_DIST,data[i,3]*U_DIST,data[i,4]*U_VEL,data[i,5]*U_VEL,data[i,6]*U_VEL))
 
     def show(self):
-        return self.part
+        print(self.part)
     
     def add(self,newpart):
         self.part = np.append(self.part,newpart)
     
-    def plot(self,n):       #Plots the n-element inside the frames vector of particles through time
-        figdir='figures/'
+    def plot_trace(self):       #Plots the n-element inside the frames vector of particles through time
+        ax = plt.axes(projection='3d')
+        for i in range(len(self.part)):
+            x = [self.frames[j,i].xpos/U_DIST for j in range(len(self.frames[:,i]))]
+            y = [self.frames[j,i].ypos/U_DIST for j in range(len(self.frames[:,i]))]
+            z = [self.frames[j,i].zpos/U_DIST for j in range(len(self.frames[:,i]))]
             
-            #getting data
-        x = [i.xpos/U_DIST for i in self.frames[n]]
-        y = [i.ypos/U_DIST for i in self.frames[n]]
-            #plotting
-        plt.plot(0,0,'tab:orange',marker='o',ms=15,alpha=0.5)
-        plt.plot(x,y,'ko',ms=3)
+                #plotting
+            ax.scatter(0,0,0,'tab:orange',marker='o',alpha=0.5)
+            ax.scatter(x,y,z,'-',linewidth=0.0001)
+            
             #formatting plot
-        plt.xlim((-20,20))
-        plt.ylim((-20,20)) 
         plt.grid()
-            #animating and showing
-        plt.show(block=False)
-        plt.pause(.0000001)
-        plt.clf()
+        plt.savefig(SAVEDIR+self.sys+'_'+self.method+'.png',dpi=100)
+        plt.show()
 
-    def nextframe(self):
+    def nextframe(self,oldpart):
         if (self.method=='Euler'):
-            for i in range(len(self.part)):
-                mass = self.part[i].m
-                newpartx = self.part[i].xpos + self.part[i].vx * self.tbin
-                newparty = self.part[i].ypos + self.part[i].vy * self.tbin
-                newpartz = self.part[i].zpos + self.part[i].vz * self.tbin
+            for i in range(len(oldpart)):
+                mass = oldpart[i].m
+                newpartx = oldpart[i].xpos + oldpart[i].vx * self.tbin
+                newparty = oldpart[i].ypos + oldpart[i].vy * self.tbin
+                newpartz = oldpart[i].zpos + oldpart[i].vz * self.tbin
                 r = np.sqrt(newpartx**2 + newparty**2 + newpartz**2)
                 mass_r = 4*np.pi*RHOo*(Rs**3)*(np.log((Rs+r)/Rs)-(r/(Rs+r)))
-                newpartvx = self.part[i].vx - (G*mass_r/(r**3)) * newpartx * self.tbin
-                newpartvy = self.part[i].vy - (G*mass_r/(r**3)) * newparty * self.tbin
-                newpartvz = self.part[i].vz - (G*mass_r/(r**3)) * newpartz * self.tbin
-                self.part[i] = particle(mass,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz)
+                newpartvx = oldpart[i].vx - (G*mass_r/(r**3)) * newpartx * self.tbin
+                newpartvy = oldpart[i].vy - (G*mass_r/(r**3)) * newparty * self.tbin
+                newpartvz = oldpart[i].vz - (G*mass_r/(r**3)) * newpartz * self.tbin
+                self.add(particle(mass,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz))
             return self.part
                 
         if (self.method=='RK4'):
-            for i in range(len(self.part)):
-                parti = self.part[i]
+            for i in range(len(oldpart)):
+                parti = oldpart[i]
                 [newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz] = self.rk4(parti.xpos,parti.ypos,parti.zpos,parti.vx,parti.vy,parti.vz)
-                self.part[i] = particle(parti.m,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz)
-            return self.part
+                self.add(particle(parti.m,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz))
    
     def mass_r(self,x,y,z):
         r = np.sqrt(x**2 + y**2 + z**2)
@@ -162,7 +158,14 @@ class universe:
     def whole(self,t):
         totalt = t
         i = 0
+        old_part = self.part
+        self.frames = np.append(self.frames,old_part)
+        self.part = np.array([])
+        self.nextframe(old_part)
+        i+=self.tbin
         while i < totalt:
-            self.frames = np.append(self.frames,self.part)
-            self.part = self.nextframe()
+            old_part = self.part
+            self.frames = np.vstack((self.frames,old_part))
+            self.part = np.array([])
+            self.nextframe(old_part)
             i+=self.tbin
