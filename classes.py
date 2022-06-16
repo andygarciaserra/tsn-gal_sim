@@ -65,10 +65,12 @@ class universe:
     tbin = 0.001*(18.6e8*U_T)   # Time bin for orbit integration.
     method = ''                 # Integration method ('Euler' for Euler and 'RK4' for Runge-Kutta)
     sys = ''                    # System type ('sun' for sun-SagA / 'loadN' to load ics from loadN.txt)
+    inter = ''                  # Boolean for grav interaction between stars. ('yes'/'no')
 
-    def __init__(self,method,sys):          #Definition example: u = Universe(100, 10 , 10 ,  'RK4' ,'fig','binary')  
+    def __init__(self,method,sys,inter):          #Definition example: u = Universe(100, 10 , 10 ,  'RK4' ,'fig','binary')  
         self.sys = sys
         self.method = method
+        self.inter = inter
 
         # Creating the actual Universe:
         if self.sys=='sun':
@@ -92,20 +94,21 @@ class universe:
         self.part = np.append(self.part,newpart)
     
     def plot_trace(self):       #Plots the n-element inside the frames vector of particles through time
+        
         fig = plt.figure()
-        ax = plt.axes(projection='3d')
+        ax = fig.add_subplot(111, projection='3d')
         for i in range(len(self.part)):
             x = [self.frames[j,i].xpos/U_DIST for j in range(len(self.frames[:,i]))]
             y = [self.frames[j,i].ypos/U_DIST for j in range(len(self.frames[:,i]))]
             z = [self.frames[j,i].zpos/U_DIST for j in range(len(self.frames[:,i]))]
             
                 #plotting
-            ax.scatter(0,0,0,'tab:orange',marker='o',alpha=0.5)
-            ax.scatter(x,y,z,'-',linewidth=0.0001)
+            ax.scatter(0,0,0,'tab:orange','o',alpha=0.5)
+            ax.scatter(x,y,z,'-',s=1)
             
             #formatting plot
-        plt.grid()
-        fig.savefig(SAVEDIR+str(self.sys)+'_'+str(self.method)+'.png',dpi=200)
+        #plt.grid()
+        #plt.savefig(SAVEDIR+str(self.sys)+'_'+str(self.method)+'.png',dpi=200)
         plt.show()
 
     def nextframe(self,oldpart):
@@ -135,13 +138,20 @@ class universe:
         return mass,r
 
     def acc(self,x,y,z,vx,vy,vz):
-        m,r = self.mass_r(x,y,z)
-        acc = [vx,vy,vz,-(G*m/(r**3))*x,-(G*m/(r**3))*y,-(G*m/(r**3))*z]
-        return acc
-    
-    def rk4(self,x,y,z,vx,vy,vz):
-        h = self.tbin    
+        if self.inter=='no':
+            m,r = self.mass_r(x,y,z)
+            acc = [vx,vy,vz,-(G*m/(r**3))*x,-(G*m/(r**3))*y,-(G*m/(r**3))*z]
+            return acc
+        if self.inter=='yes':
+            m,r =  self.mass_r(x,y,z)
         
+        else:
+            print('Integration error, gravitational interaction boolean not valid (yes/no).')
+
+
+
+    def rk4(self,x,y,z,vx,vy,vz):
+        h = self.tbin
         k1=self.acc(x,y,z,vx,vy,vz)
         k2=self.acc(x+k1[0]*h/2, y+k1[1]*h/2, z+k1[2]*h/2, vx+k1[3]*h/2, vy+k1[4]*h/2, vz+k1[5]*h/2)
         k3=self.acc(x+k2[0]*h/2, y+k2[1]*h/2, z+k2[2]*h/2, vx+k2[3]*h/2, vy+k2[4]*h/2, vz+k2[5]*h/2)
