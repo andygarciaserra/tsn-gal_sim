@@ -29,6 +29,6 @@ method = ['Euler','RK4']
 c = ['blue','tab:orange']
 ticks = [1,10,100,1000]
 
-u = universe('Euler','sun','no')
+u = universe('Euler','load10','no')
 u.whole(18.6e8*U_T)
 u.plot_trace()

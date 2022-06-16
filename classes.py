@@ -14,7 +14,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 #General variables:
-LOAD_DIR = './'
+LOAD_DIR = 'ics/'
 SAVEDIR = 'figures/'
 
 #Natural to cgs convertion units:
@@ -61,7 +61,7 @@ class particle:
 class universe:
     part = np.array([])
     frames = np.array([])
-    
+    oldpart = np.array([])
     tbin = 0.001*(18.6e8*U_T)   # Time bin for orbit integration.
     method = ''                 # Integration method ('Euler' for Euler and 'RK4' for Runge-Kutta)
     sys = ''                    # System type ('sun' for sun-SagA / 'loadN' to load ics from loadN.txt)
@@ -103,31 +103,30 @@ class universe:
             z = [self.frames[j,i].zpos/U_DIST for j in range(len(self.frames[:,i]))]
             
                 #plotting
-            ax.scatter(0,0,0,'tab:orange','o',alpha=0.5)
-            ax.scatter(x,y,z,'-',s=1)
-            
+            ax.scatter3D(0,0,0,c='tab:orange',marker='o',alpha=0.5)
+            ax.scatter3D(x,y,z,marker='.',s=0.5)
+             
             #formatting plot
         #plt.grid()
         #plt.savefig(SAVEDIR+str(self.sys)+'_'+str(self.method)+'.png',dpi=200)
         plt.show()
 
-    def nextframe(self,oldpart):
+    def nextframe(self):
         if (self.method=='Euler'):
-            for i in range(len(oldpart)):
-                mass = oldpart[i].m
-                newpartx = oldpart[i].xpos + oldpart[i].vx * self.tbin
-                newparty = oldpart[i].ypos + oldpart[i].vy * self.tbin
-                newpartz = oldpart[i].zpos + oldpart[i].vz * self.tbin
+            for i in range(len(self.oldpart)):
+                mass = self.oldpart[i].m
+                newpartx = self.oldpart[i].xpos + self.oldpart[i].vx * self.tbin
+                newparty = self.oldpart[i].ypos + self.oldpart[i].vy * self.tbin
+                newpartz = self.oldpart[i].zpos + self.oldpart[i].vz * self.tbin
                 r = np.sqrt(newpartx**2 + newparty**2 + newpartz**2)
                 mass_r = 4*np.pi*RHOo*(Rs**3)*(np.log((Rs+r)/Rs)-(r/(Rs+r)))
-                newpartvx = oldpart[i].vx - (G*mass_r/(r**3)) * newpartx * self.tbin
-                newpartvy = oldpart[i].vy - (G*mass_r/(r**3)) * newparty * self.tbin
-                newpartvz = oldpart[i].vz - (G*mass_r/(r**3)) * newpartz * self.tbin
+                newpartvx = self.oldpart[i].vx - (G*mass_r/(r**3)) * newpartx * self.tbin
+                newpartvy = self.oldpart[i].vy - (G*mass_r/(r**3)) * newparty * self.tbin
+                newpartvz = self.oldpart[i].vz - (G*mass_r/(r**3)) * newpartz * self.tbin
                 self.add(particle(mass,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz))
-            return self.part
                 
         if (self.method=='RK4'):
-            for i in range(len(oldpart)):
+            for i in range(len(self.oldpart)):
                 parti = oldpart[i]
                 [newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz] = self.rk4(parti.xpos,parti.ypos,parti.zpos,parti.vx,parti.vy,parti.vz)
                 self.add(particle(parti.m,newpartx,newparty,newpartz,newpartvx,newpartvy,newpartvz))
@@ -169,14 +168,14 @@ class universe:
     def whole(self,t):
         totalt = t
         i = 0
-        old_part = self.part
-        self.frames = np.append(self.frames,old_part)
+        self.oldpart = self.part
+        self.frames = np.append(self.frames,self.oldpart)
         self.part = np.array([])
-        self.nextframe(old_part)
+        self.nextframe()
         i+=self.tbin
         while i < totalt:
-            old_part = self.part
-            self.frames = np.vstack((self.frames,old_part))
+            self.oldpart = self.part
+            self.frames = np.vstack((self.frames,self.oldpart))
             self.part = np.array([])
-            self.nextframe(old_part)
+            self.nextframe()
             i+=self.tbin
