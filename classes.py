@@ -130,8 +130,7 @@ class universe:
                 newpartx = self.oldpart[i].xpos + self.oldpart[i].vx * self.tbin
                 newparty = self.oldpart[i].ypos + self.oldpart[i].vy * self.tbin
                 newpartz = self.oldpart[i].zpos + self.oldpart[i].vz * self.tbin
-                r = np.sqrt(newpartx**2 + newparty**2 + newpartz**2)
-                mass_r = 4*np.pi*RHOo*(Rs**3)*(np.log((Rs+r)/Rs)-(r/(Rs+r)))
+                mass_r,r = mass_r(newpartx,newparty,newpartz)
                 newpartvx = self.oldpart[i].vx - (G*mass_r/(r**3)) * newpartx * self.tbin
                 newpartvy = self.oldpart[i].vy - (G*mass_r/(r**3)) * newparty * self.tbin
                 newpartvz = self.oldpart[i].vz - (G*mass_r/(r**3)) * newpartz * self.tbin
